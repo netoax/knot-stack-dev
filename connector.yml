@@ -1,0 +1,17 @@
+version: '3.7'
+
+services:
+  connector:
+    image: knot-fog-connector:dev
+    env_file: './env.d/knot-connector.env'
+    volumes:
+      - ../knot-fog-connector:/usr/src/app
+    depends_on:
+      - rabbitmq
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.connector.loadbalancer.server.port=80
+        - traefik.http.routers.connector.rule=HostRegexp(`{subdomain:connector}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.connector.entrypoints=http

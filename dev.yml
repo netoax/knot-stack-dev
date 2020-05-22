@@ -1,0 +1,77 @@
+version: '3.7'
+
+services:
+  # Mainflux services
+  users:
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.users.loadbalancer.server.port=8180
+        - traefik.http.routers.users.rule=HostRegexp(`{subdomain:users}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.users.entrypoints=http
+
+  things:
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.things.loadbalancer.server.port=8182
+        - traefik.http.routers.things.rule=HostRegexp(`{subdomain:things}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.things.entrypoints=http
+
+  authn:
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.authn.loadbalancer.server.port=8183
+        - traefik.http.routers.authn.rule=HostRegexp(`{subdomain:authn}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.authn.entrypoints=http
+
+  # KNoT Fog Core
+  babeltower:
+    image: cesarbr/knot-babeltower:dev
+    volumes:
+      - ../knot-babeltower:/usr/src/app
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.babeltower.loadbalancer.server.port=8080
+        - traefik.http.routers.babeltower.rule=HostRegexp(`{subdomain:bt}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.babeltower.entrypoints=http
+
+  storage:
+    image: cesarbr/knot-cloud-storage:dev
+    volumes:
+      - ../knot-cloud-storage:/usr/src/app
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.storage.loadbalancer.server.port=8181
+        - traefik.http.routers.storage.rule=HostRegexp(`{subdomain:storage}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.storage.entrypoints=http
+
+  rabbitmq:
+    image: rabbitmq:management
+    env_file: './env.d/rabbitmq.env'
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.rabbitmq-admin.loadbalancer.server.port=15672
+        - traefik.http.routers.rabbitmq-admin.rule=HostRegexp(`{subdomain:admin}.{domain:[a-zA-Z0-9.]+}`)
+        - traefik.http.routers.rabbitmq-admin.entrypoints=http
+        - traefik.tcp.services.rabbitmq.loadbalancer.server.port=5672
+        - traefik.tcp.routers.rabbitmq.rule=HostSNI(`*`)
+        - traefik.tcp.routers.rabbitmq.entrypoints=broker
+
+  traefik:
+    image: traefik:v2.2
+    command: >
+      traefik
+        --entrypoints.management.address=:15672
+    ports:
+      - '15672:15672'
